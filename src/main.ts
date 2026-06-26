@@ -2,6 +2,13 @@ import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 
+// The translucent window material is delivered by the OS (macOS vibrancy). Mark
+// the root so CSS can layer over the material on macOS and fall back to a solid
+// opaque background everywhere else (Windows/Linux, or any no-material case).
+if (/Macintosh|Mac OS X/.test(navigator.userAgent)) {
+  document.documentElement.classList.add("has-material");
+}
+
 type BindScope = "localhost" | "allInterfaces";
 
 interface PortProcess {
@@ -30,8 +37,6 @@ let statusMessage: string | null = null;
 let pendingKill: PortProcess | null = null;
 let refreshTimer: number | undefined;
 let killing = false;
-let lastPointerDownAt = 0;
-let lastFocusAt = 0;
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -196,11 +201,13 @@ function rowFor(p: PortProcess): HTMLElement {
 
 function promptKill(p: PortProcess): void {
   pendingKill = p;
+  syncAutohide();
   render();
 }
 
 function cancelKill(): void {
   pendingKill = null;
+  syncAutohide();
   const row = refs.content.querySelector<HTMLElement>(".confirm-row.open");
   if (row) {
     row.classList.remove("open");
@@ -244,6 +251,7 @@ async function doKill(): Promise<void> {
   const target = pendingKill;
   pendingKill = null;
   killing = true;
+  syncAutohide();
   statusMessage = `Stopping ${target.displayName} on port ${target.port}…`;
   render();
   try {
@@ -255,6 +263,7 @@ async function doKill(): Promise<void> {
   render();
   await refresh();
   killing = false;
+  syncAutohide();
   window.setTimeout(() => {
     statusMessage = null;
     render();
@@ -286,15 +295,13 @@ async function toggleAutostart(): Promise<void> {
   }
 }
 
-/// Hide the popover on a genuine click-away, but never while a dialog is open,
-/// a kill is in flight, the window just opened, or the user is interacting with
-/// it (which can cause transient focus blips on a no-Dock macOS app).
-function maybeHideOnBlur(): void {
-  if (pendingKill || killing) return;
-  if (document.hasFocus()) return;
-  if (Date.now() - lastPointerDownAt < 400) return;
-  if (Date.now() - lastFocusAt < 350) return;
-  void invoke("hide_popover");
+/// Tell the backend whether a click-away may dismiss the popover. Dismissal is
+/// blocked while a kill confirmation is open or a kill is in flight; the native
+/// focus-loss handler in Rust does the actual hiding.
+function syncAutohide(): void {
+  void invoke("set_autohide_blocked", {
+    blocked: pendingKill !== null || killing,
+  });
 }
 
 function startAutoRefresh(): void {
@@ -326,26 +333,11 @@ function wire(): void {
     }
   });
 
-  // Track interaction so a genuine click-away can be told apart from the
-  // transient focus blips that happen while using the window.
-  document.addEventListener(
-    "pointerdown",
-    () => {
-      lastPointerDownAt = Date.now();
-    },
-    true,
-  );
-
-  // Refresh while the popover is focused; pause when it loses focus. On a real
-  // click-away, dismiss the popover (guarded so it never closes mid-action).
-  window.addEventListener("focus", () => {
-    lastFocusAt = Date.now();
-    startAutoRefresh();
-  });
-  window.addEventListener("blur", () => {
-    stopAutoRefresh();
-    window.setTimeout(maybeHideOnBlur, 160);
-  });
+  // Refresh while the popover is focused; pause when it loses focus. The
+  // click-away dismissal itself is handled natively in Rust (window focus
+  // loss), which is reliable for a transparent, vibrancy-backed popover.
+  window.addEventListener("focus", () => startAutoRefresh());
+  window.addEventListener("blur", () => stopAutoRefresh());
 }
 
 wire();

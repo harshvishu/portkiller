@@ -11,6 +11,7 @@
   },
   "app": {
     "withGlobalTauri": false,
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -21,11 +22,16 @@
         "minHeight": 360,
         "resizable": false,
         "decorations": false,
-        "transparent": false,
+        "transparent": true,
         "alwaysOnTop": true,
         "visible": false,
         "skipTaskbar": true,
-        "shadow": true
+        "shadow": true,
+        "windowEffects": {
+          "effects": ["popover"],
+          "state": "active",
+          "radius": 12
+        }
       }
     ],
     "security": {

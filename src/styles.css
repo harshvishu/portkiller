@@ -1,16 +1,34 @@
 :root {
-  --bg: #ffffff;
-  --fg: #1d1d1f;
-  --fg-secondary: #6e6e73;
-  --divider: rgba(0, 0, 0, 0.08);
-  --field-bg: rgba(0, 0, 0, 0.05);
-  --chip-bg: rgba(0, 0, 0, 0.08);
+  /* Vibrancy-aware label colors (primary / secondary / tertiary) */
+  --label-primary: #1d1d1f;
+  --label-secondary: rgba(0, 0, 0, 0.56);
+  --label-tertiary: rgba(0, 0, 0, 0.34);
+
+  /* Legacy aliases mapped onto the vibrancy palette */
+  --fg: var(--label-primary);
+  --fg-secondary: var(--label-secondary);
+
+  /* Hairlines and thin translucent fills that layer over the material */
+  --hairline: rgba(0, 0, 0, 0.1);
+  --divider: var(--hairline);
+  --fill-panel: rgba(255, 255, 255, 0.42);
+  --fill-control: rgba(0, 0, 0, 0.05);
+  --field-bg: var(--fill-control);
+  --chip-bg: rgba(0, 0, 0, 0.07);
+  --row-hover: rgba(0, 0, 0, 0.06);
+  --row-selected: rgba(0, 0, 0, 0.08);
+
   --accent: #0a84ff;
   --danger: #ff3b30;
   --danger-fg: #ffffff;
-  --row-hover: rgba(0, 0, 0, 0.035);
-  --overlay: rgba(0, 0, 0, 0.28);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  --danger-tint: rgba(255, 59, 48, 0.14);
+  --danger-tint-border: rgba(255, 59, 48, 0.32);
+
+  /* Solid fallback background for no-material platforms */
+  --bg: #f6f6f7;
+
+  --radius-window: 12px;
+
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
   font-size: 13px;
@@ -18,14 +36,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1e1e1e;
-    --fg: #f5f5f7;
-    --fg-secondary: #9a9a9e;
-    --divider: rgba(255, 255, 255, 0.1);
-    --field-bg: rgba(255, 255, 255, 0.08);
+    --label-primary: #f5f5f7;
+    --label-secondary: rgba(255, 255, 255, 0.56);
+    --label-tertiary: rgba(255, 255, 255, 0.32);
+
+    --hairline: rgba(255, 255, 255, 0.12);
+    --fill-panel: rgba(255, 255, 255, 0.06);
+    --fill-control: rgba(255, 255, 255, 0.08);
     --chip-bg: rgba(255, 255, 255, 0.12);
-    --row-hover: rgba(255, 255, 255, 0.06);
-    --overlay: rgba(0, 0, 0, 0.5);
+    --row-hover: rgba(255, 255, 255, 0.07);
+    --row-selected: rgba(255, 255, 255, 0.11);
+
+    --danger-tint: rgba(255, 69, 58, 0.18);
+    --danger-tint-border: rgba(255, 69, 58, 0.4);
+
+    --bg: #1e1e1e;
   }
 }
 
@@ -39,23 +64,45 @@ body {
   padding: 0;
   height: 100%;
   background: transparent;
-  color: var(--fg);
+  color: var(--label-primary);
   user-select: none;
   -webkit-user-select: none;
 }
 
+/*
+ * The frosted glass is the OS window material (Tauri windowEffects) showing
+ * through a transparent window. #app stays transparent so the material reads
+ * through it; depth is built only from thin in-page fills + hairlines, never
+ * from backdrop-filter (which would sample the transparent void).
+ */
 #app {
   width: 380px;
   height: 100vh;
-  background: var(--bg);
+  background: transparent;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: var(--radius-window);
+  /* Hairline edge that traces the rounded material; the system shadow comes
+     from the OS and follows this rounded alpha. */
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+/*
+ * Fallback: where no system material exists (non-macOS, or material couldn't be
+ * applied) the root has no `has-material` class, so paint a solid opaque
+ * background and drop the rounded/transparent treatment for clean legibility.
+ */
+:root:not(.has-material) #app {
+  background: var(--bg);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .divider {
   height: 1px;
-  background: var(--divider);
+  background: var(--hairline);
+  flex-shrink: 0;
 }
 
 /* Header */
@@ -63,7 +110,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 10px 14px;
 }
 
 .brand {
@@ -75,11 +122,13 @@ body {
 .brand-glyph {
   color: var(--accent);
   font-size: 15px;
+  line-height: 1;
 }
 
 .brand-title {
   font-weight: 600;
   font-size: 14px;
+  color: var(--label-primary);
 }
 
 .header-right {
@@ -91,7 +140,7 @@ body {
 .count {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   background: var(--chip-bg);
   padding: 2px 7px;
   border-radius: 10px;
@@ -101,17 +150,18 @@ body {
 .text-btn {
   border: none;
   background: transparent;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   cursor: pointer;
   border-radius: 6px;
   padding: 3px 6px;
   font-size: 14px;
+  line-height: 1;
 }
 
 .icon-btn:hover,
 .text-btn:hover {
-  background: var(--field-bg);
-  color: var(--fg);
+  background: var(--fill-control);
+  color: var(--label-primary);
 }
 
 /* Search */
@@ -121,12 +171,13 @@ body {
   gap: 6px;
   margin: 0 12px 8px;
   padding: 6px 10px;
-  background: var(--field-bg);
+  background: var(--fill-panel);
+  border: 0.5px solid var(--hairline);
   border-radius: 8px;
 }
 
 .search-icon {
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   font-size: 13px;
 }
 
@@ -135,16 +186,20 @@ body {
   border: none;
   outline: none;
   background: transparent;
-  color: var(--fg);
+  color: var(--label-primary);
   font-size: 13px;
   user-select: text;
   -webkit-user-select: text;
 }
 
+#search::placeholder {
+  color: var(--label-tertiary);
+}
+
 .search-clear {
   border: none;
   background: transparent;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   cursor: pointer;
   font-size: 14px;
 }
@@ -154,6 +209,7 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  padding: 4px 6px;
 }
 
 .empty {
@@ -163,29 +219,45 @@ body {
   justify-content: center;
   gap: 8px;
   height: 100%;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   text-align: center;
   padding: 28px 16px;
 }
 
 .empty-glyph {
   font-size: 30px;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
+/* Rows: inset rounded hover/selection with hairline inset dividers */
 .row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 8px 10px;
+  margin: 0 2px;
+  border-radius: 8px;
 }
 
 .row:hover {
   background: var(--row-hover);
 }
 
-.row + .row {
-  border-top: 1px solid var(--divider);
+/* Hairline divider that sits inset between rows */
+.row + .row::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: -1px;
+  height: 0.5px;
+  background: var(--hairline);
+}
+
+.row:hover::before,
+.row:hover + .row::before {
+  background: transparent;
 }
 
 .row-main {
@@ -206,16 +278,18 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 600;
   font-size: 13px;
+  color: var(--label-primary);
 }
 
 .lock {
   font-size: 11px;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
+  opacity: 0.85;
 }
 
 .scope {
   font-size: 11px;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -223,18 +297,19 @@ body {
 
 .row-name {
   font-size: 13px;
+  color: var(--label-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .row-name.protected {
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
 }
 
 .row-meta {
   font-size: 11px;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
 }
 
 .kill-btn {
@@ -244,22 +319,22 @@ body {
   font-weight: 600;
   font-size: 13px;
   padding: 5px 14px;
-  border-radius: 12px;
+  border-radius: 999px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .kill-btn:active {
-  opacity: 0.8;
+  opacity: 0.82;
 }
 
 .protected-chip {
   font-size: 11px;
   font-weight: 500;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   background: var(--chip-bg);
   padding: 5px 10px;
-  border-radius: 12px;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
@@ -268,12 +343,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 8px 14px;
 }
 
 .status {
   font-size: 11px;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -285,26 +360,108 @@ body {
   justify-content: space-between;
 }
 
+/* macOS-style switch for "Launch at login" */
 .login-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 12px;
-  color: var(--fg-secondary);
+  color: var(--label-secondary);
   cursor: pointer;
 }
 
-/* Inline confirmation (slides in below the targeted row) */
+.login-toggle-text {
+  color: var(--label-secondary);
+}
+
+.switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 19px;
+  border-radius: 999px;
+  background: var(--fill-control);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease;
+  flex-shrink: 0;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  transition: transform 180ms ease;
+}
+
+.switch-input:checked + .switch {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 0.5px transparent;
+}
+
+.switch-input:checked + .switch::after {
+  transform: translateX(13px);
+}
+
+.switch-input:focus-visible + .switch {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::after {
+    transition: none;
+  }
+}
+
+/* Inline confirmation (slides in as an extension of the targeted row) */
 .row.armed {
-  background: rgba(255, 59, 48, 0.1);
+  background: var(--danger-tint);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    inset 0 0.5px 0 var(--danger-tint-border),
+    inset 0.5px 0 0 var(--danger-tint-border),
+    inset -0.5px 0 0 var(--danger-tint-border);
+}
+
+/* No inter-row hairline above an armed row; it owns a full tinted border */
+.row.armed::before {
+  display: none;
+}
+
+/* Hide the row's own Kill button while its confirmation is expanded */
+.row.armed .kill-btn {
+  display: none;
 }
 
 .confirm-row {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  background: rgba(255, 59, 48, 0.1);
-  border-top: 1px solid var(--divider);
+  background: var(--danger-tint);
+  border-radius: 0 0 8px 8px;
+  margin: 0 2px;
+  box-shadow:
+    inset 0 -0.5px 0 var(--danger-tint-border),
+    inset 0.5px 0 0 var(--danger-tint-border),
+    inset -0.5px 0 0 var(--danger-tint-border);
   transition:
     max-height 220ms ease,
     opacity 180ms ease;
@@ -320,11 +477,12 @@ body {
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
+  border-top: 0.5px solid var(--danger-tint-border);
 }
 
 .confirm-text {
   font-size: 12px;
-  color: var(--fg);
+  color: var(--label-primary);
   line-height: 1.4;
 }
 
@@ -340,24 +498,41 @@ body {
   }
 }
 
+/* Capsule buttons */
 .btn {
   border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
+  border-radius: 999px;
+  padding: 6px 16px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }
 
 .btn-secondary {
-  background: var(--field-bg);
-  color: var(--fg);
+  background: var(--fill-control);
+  color: var(--label-primary);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.btn-secondary:hover {
+  background: var(--row-selected);
 }
 
 .btn-danger {
   background: var(--danger);
   color: var(--danger-fg);
   font-weight: 600;
+}
+
+.btn-danger:active {
+  opacity: 0.82;
+}
+
+/* System-accent focus ring on any focusable control */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .hidden {
@@ -369,7 +544,7 @@ body {
   width: 12px;
   height: 12px;
   border: 2px solid var(--chip-bg);
-  border-top-color: var(--fg-secondary);
+  border-top-color: var(--label-secondary);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
