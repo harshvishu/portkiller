@@ -1,10 +1,11 @@
 # Port Killer
 
-A lightweight macOS **menu bar app** that lists every process listening on a TCP
-port and lets you stop it with one click — perfect for clearing a stuck dev
-server (`3000`, `8080`, …).
+A lightweight **menu-bar / system-tray app** that lists every process listening
+on a TCP port and lets you stop it with one click — perfect for clearing a stuck
+dev server (`3000`, `8080`, …). Cross-platform, built with
+[Tauri 2](https://v2.tauri.app/) (Rust backend + web UI).
 
-![menu bar](https://img.shields.io/badge/macOS-13%2B-blue) ![swift](https://img.shields.io/badge/Swift-5.9-orange)
+![macOS](https://img.shields.io/badge/macOS-supported-blue) ![Windows](https://img.shields.io/badge/Windows-supported-blue) ![Linux](https://img.shields.io/badge/Linux-fast--follow-lightgrey) ![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB)
 
 ## Features
 
@@ -27,33 +28,36 @@ server (`3000`, `8080`, …).
   process refuses to exit, so the port is reliably freed.
 - **Bind-scope hint** — shows whether a port is `localhost`-only or exposed on
   `all interfaces`.
-- **Launch at login** — a one-click toggle (via `SMAppService`) to start Port
-  Killer automatically when you sign in.
+- **Launch at login** — a one-click, cross-platform toggle to start Port Killer
+  automatically when you sign in.
 
 ## Requirements
 
-- macOS 13 (Ventura) or later
-- Swift toolchain (Xcode or Command Line Tools)
+To build from source you need the
+[Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/):
 
-## Build & run
+- **Rust** (stable) and **Node.js 18+**
+- macOS: Xcode Command Line Tools
+- Windows: Microsoft C++ Build Tools + WebView2 (preinstalled on Windows 10/11)
+- Linux: WebKitGTK + AppIndicator (`libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, …)
 
-```bash
-./build_app.sh
-open "dist/Port Killer.app"
-```
-
-Look for the ⚡️ plug icon in your menu bar. Click it to see the list.
-
-To install it permanently:
+## Run & build
 
 ```bash
-cp -R "dist/Port Killer.app" /Applications/
+npm install            # install frontend deps + the Tauri CLI
+npm run tauri dev      # run the app with hot-reloading
+npm run tauri build    # release bundle -> src-tauri/target/release/bundle/
 ```
 
-### Launch at login (optional)
+`tauri dev`/`build` invoke Vite automatically. The app lives in the macOS menu
+bar or the Windows/Linux system tray — look for the ⏻ power icon and click it to
+open the popover.
 
-System Settings → General → Login Items → **+** → choose
-`/Applications/Port Killer.app`.
+### Regenerating icons
+
+```bash
+npm run tauri icon app-icon.png   # regenerate src-tauri/icons/ from the source PNG
+```
 
 ## How it works
 

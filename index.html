@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Port Killer</title>
+  </head>
+  <body>
+    <main id="app">
+      <header class="header">
+        <div class="brand">
+          <span class="brand-glyph" aria-hidden="true">⏻</span>
+          <span class="brand-title">Port Killer</span>
+        </div>
+        <div class="header-right">
+          <span id="spinner" class="spinner hidden" aria-hidden="true"></span>
+          <span id="count" class="count">0</span>
+          <button id="refresh" class="icon-btn" title="Refresh now" aria-label="Refresh now">⟳</button>
+        </div>
+      </header>
+
+      <div id="search-bar" class="search-bar hidden">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="search" type="text" placeholder="Filter by port, app, or owner" autocomplete="off" spellcheck="false" />
+        <button id="search-clear" class="search-clear hidden" title="Clear filter" aria-label="Clear filter">⨯</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <section id="content" class="content"></section>
+
+      <div class="divider"></div>
+
+      <footer class="footer">
+        <div id="status" class="status hidden"></div>
+        <div class="footer-row">
+          <label class="login-toggle">
+            <input id="autostart" type="checkbox" />
+            <span>Launch at login</span>
+          </label>
+          <button id="quit" class="text-btn" title="Quit Port Killer">Quit</button>
+        </div>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

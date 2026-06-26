@@ -2,8 +2,15 @@
 .build/
 .swiftpm/
 
-# App bundle build output
+# App bundle build output / frontend build output
 dist/
+
+# Node / frontend
+node_modules/
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
 
 # Xcode
 *.xcodeproj
