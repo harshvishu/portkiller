@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E6F2FF"/>
+      <stop offset="1" stop-color="#A9D2F4"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2F8AD2"/>
+      <stop offset="1" stop-color="#0C4880"/>
+    </linearGradient>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#32506B"/>
+      <stop offset="1" stop-color="#1A2C3E"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="100" y="100" width="824" height="824" rx="185" ry="185"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <!-- sky -->
+    <rect x="100" y="100" width="824" height="824" fill="url(#sky)"/>
+    <!-- sun glow -->
+    <circle cx="298" cy="272" r="68" fill="#FFF6DC" opacity="0.85"/>
+
+    <!-- sinking ship: bow pitched up to the left, stern plunging under to the right -->
+    <g transform="translate(-8 30) rotate(-30 512 552)">
+      <!-- mast -->
+      <rect x="505" y="318" width="15" height="228" rx="7" fill="#3C2A1E"/>
+      <!-- main sail -->
+      <path d="M520 334 L520 528 L396 528 Q472 430 520 334 Z" fill="#F5F2E7"/>
+      <path d="M520 334 L520 528 L470 528 Q498 430 520 334 Z" fill="#E0DAC5"/>
+      <!-- pennant flag -->
+      <path d="M512 318 L568 334 L512 350 Z" fill="#E4564A"/>
+      <!-- hull -->
+      <path d="M334 522 L704 522 L650 608 Q519 656 390 608 Z" fill="url(#hull)"/>
+      <!-- deck cabin -->
+      <rect x="428" y="497" width="152" height="31" rx="7" fill="#3A5E7E"/>
+      <!-- portholes -->
+      <circle cx="466" cy="556" r="11" fill="#9CC4E6"/>
+      <circle cx="538" cy="560" r="11" fill="#9CC4E6"/>
+    </g>
+
+    <!-- water: lower on the bow side, rising over the sinking stern -->
+    <path d="M100 606
+             C 236 590 322 616 432 598
+             C 548 580 604 566 722 560
+             C 822 555 892 576 924 566
+             L924 924 L100 924 Z" fill="url(#sea)"/>
+    <path d="M100 606
+             C 236 590 322 616 432 598
+             C 548 580 604 566 722 560
+             C 822 555 892 576 924 566"
+          fill="none" stroke="#8CC2EA" stroke-width="9" stroke-linecap="round" opacity="0.75"/>
+
+    <!-- rising bubbles from the submerged stern -->
+    <circle cx="724" cy="540" r="12" fill="#D4E8FB" opacity="0.9"/>
+    <circle cx="760" cy="506" r="8" fill="#D4E8FB" opacity="0.85"/>
+    <circle cx="694" cy="500" r="7" fill="#D4E8FB" opacity="0.8"/>
+  </g>
+</svg>

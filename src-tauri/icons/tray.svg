@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <g fill="#000000">
+    <!-- sinking ship (bow up, stern under) -->
+    <g transform="rotate(-19 32 28)">
+      <rect x="30.4" y="12" width="3.2" height="21" rx="1.6"/>
+      <path d="M33 13 L46 17.5 L33 22 Z"/>
+      <path d="M15 32 L49 32 L44 40.5 Q32 45 20 40.5 Z"/>
+    </g>
+  </g>
+  <!-- waves; the front crest crosses the hull so the stern reads as submerged -->
+  <path d="M5 43 Q13 38.5 21 43 T37 43 T53 43 T69 43"
+        fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M9 52 Q17 47.5 25 52 T41 52 T57 52"
+        fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="round"/>
+</svg>
