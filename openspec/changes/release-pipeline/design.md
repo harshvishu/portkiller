@@ -63,6 +63,7 @@ Without an Apple Developer ID or Windows cert, bundles are unsigned: macOS Gatek
 - **`ubuntu-latest` drift breaks Linux builds** → D6 pins `ubuntu-22.04` and installs explicit GTK deps.
 - **Manifest/tag version mismatch produces mislabeled installers** → D1 stamps all three manifests from the tag at build time.
 - **Bump helper pushes a tag that the release branch guard then rejects** → `version.yml` runs on and commits to `release` before tagging, so the tag is always an ancestor of `release` by construction.
+- **A tag pushed by the bump helper with the default `GITHUB_TOKEN` does not trigger `release.yml`** (GitHub suppresses recursive workflow triggers from `GITHUB_TOKEN`) → the helper uses `secrets.RELEASE_PAT || secrets.GITHUB_TOKEN`; with a `RELEASE_PAT` (contents:write) the release auto-starts, and without it the tag is still created and the release can be started manually.
 - **Unsigned binaries erode user trust / Homebrew Cask + winget won't accept them cleanly** → documented warnings now; deferred signing change unblocks both channels together.
 - **Draft releases pile up if not published** → acceptable; review-before-publish is the intended safety valve and is a one-line switch to auto-publish later.
 - **`npm ci` requires a committed lockfile** → `package-lock.json` is present; CI depends on it staying committed.
@@ -77,6 +78,6 @@ Without an Apple Developer ID or Windows cert, bundles are unsigned: macOS Gatek
 
 ## Open Questions
 
-- Should the first tagged release be `v1.0.0` (current manifest value) or start at `v1.0.1` to keep `1.0.0` as the pre-pipeline baseline?
+- Should the first tagged release be `v1.0.0` (current manifest value) or start at `v1.0.1` to keep `1.0.0` as the pre-pipeline baseline? **Resolved: `v1.0.0`** — the first release reuses the current manifest version. (The bump helper computes from the latest tag, so the very first `v1.0.0` tag is created by hand.)
 - Should `release.yml` also fire on pre-release tags (`v*-rc.*`, `v*-beta.*`) and mark those GitHub Releases as "pre-release," or only on final `vX.Y.Z`?
 - ~~Auto-publish the Release or keep the draft-then-manual-publish gate?~~ **Resolved: manual publish** — the Release is always created as a draft (D5) and a maintainer reviews and publishes it. Auto-publish is not enabled by default.

@@ -59,6 +59,39 @@ open the popover.
 npm run tauri icon app-icon.png   # regenerate src-tauri/icons/ from the source PNG
 ```
 
+## Releasing & installation
+
+Releases are **tag-driven** and gated to the `release` branch:
+
+1. Land release-ready code on the `release` branch (CI validates every push).
+2. Cut a version — either run the **version** workflow (Actions ▸ *version* ▸
+   choose `patch` / `minor` / `major`), or tag by hand on `release`:
+   ```bash
+   git tag v1.2.0 && git push origin v1.2.0
+   ```
+3. The **release** workflow verifies the tag is on `release`, builds macOS
+   (universal), Windows, and Linux installers, stamps the version from the tag,
+   and publishes a **draft** GitHub Release. A maintainer reviews and publishes it.
+
+The git tag is the single source of truth for the version — the pipeline stamps
+it into `package.json`, `Cargo.toml`, and `tauri.conf.json` at build time.
+
+> To make the bump workflow's pushed tag auto-start a release, add a `RELEASE_PAT`
+> repo secret (a fine-grained PAT with `contents: write`); the default token does
+> not trigger downstream workflows.
+
+### Installing unsigned builds
+
+Current releases are **not yet code-signed**, so the OS warns on first launch:
+
+- **macOS** — right-click *Port Killer.app* → **Open**, then confirm. Or clear the
+  quarantine flag: `xattr -dr com.apple.quarantine "/Applications/Port Killer.app"`.
+- **Windows** — SmartScreen shows "unknown publisher": **More info** → **Run anyway**.
+- **Linux** — make the AppImage executable first: `chmod +x Port*.AppImage`.
+
+Code signing / notarization (and package-manager channels like Homebrew Cask and
+winget that depend on it) are a planned follow-up.
+
 ## How it works
 
 | Concern            | Implementation                                                              |

@@ -1,0 +1,120 @@
+name: release
+
+# Distribution. Fires only on a vX.Y.Z tag, and only releases when that tag's
+# commit is on the `release` branch. Builds macOS (universal) + Windows + Linux
+# and publishes a DRAFT GitHub Release with the installers attached.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  guard:
+    name: Verify tag is on release branch
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Git tags are branch-agnostic; enforce "tag must be on release" by
+      # checking the tagged commit is contained in origin/release.
+      - name: Check release-branch ancestry
+        run: |
+          git fetch --no-tags origin +refs/heads/release:refs/remotes/origin/release
+          if git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/release; then
+            echo "Tagged commit $GITHUB_SHA is on the release branch."
+          else
+            echo "::error::Tag $GITHUB_REF_NAME is not on the release branch; refusing to release."
+            exit 1
+          fi
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build & publish (${{ matrix.platform }})
+    needs: guard
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+          - platform: windows-latest
+            args: ""
+          - platform: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # The tag is the single source of truth for the version.
+      - name: Stamp version from tag
+        run: node scripts/set-version.mjs ${{ needs.guard.outputs.version }}
+
+      - name: Build and publish draft release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # --- Signing (deferred; uncomment + add secrets when credentials exist) ---
+          # macOS notarization + Developer ID signing:
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode (configured via tauri.conf.json bundle.windows):
+          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.WINDOWS_CERTIFICATE }}
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Port Killer ${{ needs.guard.outputs.version }}"
+          releaseBody: |
+            ## Port Killer ${{ needs.guard.outputs.version }}
+
+            Download the installer for your platform below.
+
+            > [!IMPORTANT]
+            > These builds are **not code-signed** yet, so the OS will warn on first launch:
+            > - **macOS** — right-click the app → **Open**, then confirm. Or clear the
+            >   quarantine flag: `xattr -dr com.apple.quarantine "/Applications/Port Killer.app"`.
+            > - **Windows** — SmartScreen shows "unknown publisher": click **More info** → **Run anyway**.
+            > - **Linux** — make the AppImage executable first: `chmod +x Port*.AppImage`.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
