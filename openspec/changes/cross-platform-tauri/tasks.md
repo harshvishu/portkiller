@@ -71,11 +71,11 @@
 - [ ] 8.2 Configure macOS signing + notarization — DEFERRED: requires an Apple Developer certificate
 - [ ] 8.3 Configure Windows Authenticode signing — DEFERRED: requires a code-signing certificate + Windows host
 - [x] 8.4 Add per-OS CI jobs that build and bundle the app
-- [ ] 8.5 Verify installable artifacts launch on each target platform — macOS bundle built here; Windows/Linux pending those hosts
+- [ ] 8.5 Verify installable artifacts launch on each target platform — macOS `.app` built and smoke-launched here: frontend (tsc+vite) builds clean, release bundle builds, binary launches and stays alive (no crash), bundled `Info.plist` has `LSUIElement=true` (no-Dock accessory). Windows/Linux pending those hosts
 
 ## 9. Parity verification & cutover
 
-- [ ] 9.1 Verify macOS feature parity against the original app (list, search, bind scope, protected rows, graceful kill, autostart) — backend/tests/build verified; interactive GUI parity pending on-device check
+- [ ] 9.1 Verify macOS feature parity against the original app (list, search, bind scope, protected rows, graceful kill, autostart) — backend/tests/build verified; release bundle smoke-launched (clean start, single-instance plugin confirmed by a second launch exiting immediately while one was running); interactive GUI parity (tray click, popover list/search/kill, autostart toggle) still pending on-device check
 - [ ] 9.2 Verify Windows behavior (enumeration, force kill messaging, autostart, tray, no taskbar entry) — DEFERRED: requires a Windows host
 - [ ] 9.3 Verify Linux behavior (enumeration, kill, autostart, tray or fallback window) — DEFERRED with Linux scope (Q2)
 - [ ] 9.4 Remove the Swift implementation: `Sources/PortKiller/**`, `Package.swift`, `build_app.sh` — DEFERRED: cutover only after interactive macOS GUI sign-off (Swift retained as rollback)
