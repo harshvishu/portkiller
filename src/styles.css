@@ -204,6 +204,139 @@ body {
   font-size: 14px;
 }
 
+/* Controls: category chips + sort selector */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 12px 8px;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border: none;
+  background: var(--chip-bg);
+  color: var(--label-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.chip:hover {
+  color: var(--label-primary);
+}
+
+.chip.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.sort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sort-label {
+  font-size: 11px;
+  color: var(--label-tertiary);
+}
+
+.sort-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0.5px solid var(--hairline);
+  background: var(--fill-control);
+  color: var(--label-primary);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sort-dir {
+  border: 0.5px solid var(--hairline);
+  background: var(--fill-control);
+  color: var(--label-secondary);
+  font-size: 12px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sort-dir:hover {
+  color: var(--label-primary);
+}
+
+/* Per-row resource bars */
+.row-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.metric-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--label-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.metric-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--fill-control);
+  overflow: hidden;
+}
+
+.metric-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 200ms ease;
+}
+
+.metric-mem .metric-fill {
+  background: var(--label-secondary);
+}
+
+.metric-val {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--label-secondary);
+  min-width: 44px;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-fill {
+    transition: none;
+  }
+}
+
 /* Content / list */
 .content {
   flex: 1 1 auto;

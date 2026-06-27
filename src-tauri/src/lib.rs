@@ -2,7 +2,10 @@ mod kill;
 mod ports;
 
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
+use serde::Serialize;
+use sysinfo::{ProcessesToUpdate, System};
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -16,9 +19,34 @@ use tauri_plugin_positioner::{Position, WindowExt};
 #[derive(Default)]
 struct AutohideBlocked(AtomicBool);
 
+/// A single, app-lifetime `sysinfo::System` used as the metrics sampler. Held
+/// behind a `Mutex` so each `list_ports` call refreshes the *same* instance,
+/// which is what lets `sysinfo` compute CPU% as a delta between successive
+/// samples instead of always reporting 0%.
+struct AppMetrics {
+    sys: Mutex<System>,
+}
+
+/// Static-ish host facts the frontend needs to normalize the resource bars.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SystemInfo {
+    /// Total physical memory, in bytes, used to scale the memory bars.
+    total_memory: u64,
+}
+
 #[tauri::command]
-fn list_ports() -> Vec<ports::PortProcess> {
-    ports::list_ports()
+fn list_ports(metrics: tauri::State<'_, AppMetrics>) -> Vec<ports::PortProcess> {
+    let mut sys = metrics.sys.lock().expect("metrics mutex poisoned");
+    ports::list_ports(&mut sys)
+}
+
+#[tauri::command]
+fn system_info(metrics: tauri::State<'_, AppMetrics>) -> SystemInfo {
+    let sys = metrics.sys.lock().expect("metrics mutex poisoned");
+    SystemInfo {
+        total_memory: sys.total_memory(),
+    }
 }
 
 #[tauri::command]
@@ -81,6 +109,7 @@ pub fn run() {
         .manage(AutohideBlocked::default())
         .invoke_handler(tauri::generate_handler![
             list_ports,
+            system_info,
             kill_port,
             quit_app,
             hide_popover,
@@ -106,6 +135,15 @@ pub fn run() {
             // Background / menu-bar app: no Dock icon on macOS.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            // Prime the metrics sampler once at startup so the first scan has a
+            // prior CPU sample to delta against, and so total memory is known.
+            let mut sys = System::new();
+            sys.refresh_processes(ProcessesToUpdate::All, true);
+            sys.refresh_memory();
+            app.manage(AppMetrics {
+                sys: Mutex::new(sys),
+            });
 
             let handle = app.handle().clone();
 

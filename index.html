@@ -21,8 +21,28 @@
 
       <div id="search-bar" class="search-bar hidden">
         <span class="search-icon" aria-hidden="true">⌕</span>
-        <input id="search" type="text" placeholder="Filter by port, app, or owner" autocomplete="off" spellcheck="false" />
+        <input id="search" type="text" placeholder="Filter by port, PID, app, or owner" autocomplete="off" spellcheck="false" />
         <button id="search-clear" class="search-clear hidden" title="Clear filter" aria-label="Clear filter">⨯</button>
+      </div>
+
+      <div id="controls" class="controls hidden">
+        <div class="chips" role="group" aria-label="Filter by category">
+          <button class="chip active" data-category="all" aria-pressed="true">All</button>
+          <button class="chip" data-category="killable" aria-pressed="false">Killable</button>
+          <button class="chip" data-category="protected" aria-pressed="false">Protected</button>
+          <button class="chip" data-category="exposed" aria-pressed="false">Exposed</button>
+        </div>
+        <div class="sort">
+          <label class="sort-label" for="sort-key">Sort</label>
+          <select id="sort-key" class="sort-select" aria-label="Sort key">
+            <option value="port">Port</option>
+            <option value="pid">PID</option>
+            <option value="name">Name</option>
+            <option value="cpu">CPU</option>
+            <option value="memory">Memory</option>
+          </select>
+          <button id="sort-dir" class="sort-dir" title="Toggle sort direction" aria-label="Toggle sort direction">↑</button>
+        </div>
       </div>
 
       <div class="divider"></div>

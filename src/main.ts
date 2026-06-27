@@ -22,12 +22,22 @@ interface PortProcess {
   isKillable: boolean;
   protectedReason: string | null;
   bindScope: BindScope;
+  cpuPercent: number;
+  memoryBytes: number;
+}
+
+interface SystemInfo {
+  totalMemory: number;
 }
 
 interface KillResult {
   ok: boolean;
   status: string;
 }
+
+type SortKey = "port" | "pid" | "name" | "cpu" | "memory";
+type SortDir = "asc" | "desc";
+type Category = "all" | "killable" | "protected" | "exposed";
 
 const REFRESH_MS = 3000;
 
@@ -37,6 +47,18 @@ let statusMessage: string | null = null;
 let pendingKill: PortProcess | null = null;
 let refreshTimer: number | undefined;
 let killing = false;
+
+// Total physical RAM, used to normalize the memory bars. Fetched once at start.
+let totalMemory = 0;
+// Number of completed scans this session. CPU% needs two samples of the same
+// backend sampler before it reflects a real delta, so the first scan shows a
+// placeholder instead of a misleading 0%.
+let scanCount = 0;
+
+// Presentation state (reset to defaults each launch — not persisted, by design).
+let sortKey: SortKey = "port";
+let sortDir: SortDir = "asc";
+let category: Category = "all";
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -51,22 +73,60 @@ const refs = {
   searchBar: el("search-bar"),
   search: el<HTMLInputElement>("search"),
   searchClear: el<HTMLButtonElement>("search-clear"),
+  controls: el("controls"),
+  sortKey: el<HTMLSelectElement>("sort-key"),
+  sortDir: el<HTMLButtonElement>("sort-dir"),
   content: el("content"),
   status: el("status"),
   autostart: el<HTMLInputElement>("autostart"),
   quit: el<HTMLButtonElement>("quit"),
 };
 
-function filtered(): PortProcess[] {
-  const q = refs.search.value.trim().toLowerCase();
-  if (!q) return ports;
-  return ports.filter(
-    (p) =>
-      String(p.port).includes(q) ||
-      p.displayName.toLowerCase().includes(q) ||
-      p.command.toLowerCase().includes(q) ||
-      p.user.toLowerCase().includes(q),
+function matchesQuery(p: PortProcess, q: string): boolean {
+  if (!q) return true;
+  return (
+    String(p.port).includes(q) ||
+    String(p.pid).includes(q) ||
+    p.displayName.toLowerCase().includes(q) ||
+    p.command.toLowerCase().includes(q) ||
+    p.user.toLowerCase().includes(q)
   );
+}
+
+function matchesCategory(p: PortProcess): boolean {
+  switch (category) {
+    case "killable":
+      return p.isKillable;
+    case "protected":
+      return !p.isKillable;
+    case "exposed":
+      return p.bindScope === "allInterfaces";
+    default:
+      return true;
+  }
+}
+
+function sortComparator(a: PortProcess, b: PortProcess): number {
+  const dir = sortDir === "asc" ? 1 : -1;
+  switch (sortKey) {
+    case "pid":
+      return (a.pid - b.pid || a.port - b.port) * dir;
+    case "name":
+      return (a.displayName.localeCompare(b.displayName) || a.port - b.port) * dir;
+    case "cpu":
+      return (a.cpuPercent - b.cpuPercent || a.port - b.port) * dir;
+    case "memory":
+      return (a.memoryBytes - b.memoryBytes || a.port - b.port) * dir;
+    default:
+      return (a.port - b.port || a.pid - b.pid) * dir;
+  }
+}
+
+function visibleRows(): PortProcess[] {
+  const q = refs.search.value.trim().toLowerCase();
+  return ports
+    .filter((p) => matchesCategory(p) && matchesQuery(p, q))
+    .sort(sortComparator);
 }
 
 async function refresh(): Promise<void> {
@@ -75,6 +135,7 @@ async function refresh(): Promise<void> {
   refs.spinner.classList.remove("hidden");
   try {
     ports = await invoke<PortProcess[]>("list_ports");
+    scanCount += 1;
   } catch (e) {
     statusMessage = `Scan failed: ${String(e)}`;
   } finally {
@@ -89,9 +150,10 @@ function scopeLabel(scope: BindScope): string {
 }
 
 function render(): void {
-  const visible = filtered();
+  const visible = visibleRows();
   refs.count.textContent = String(visible.length);
   refs.searchBar.classList.toggle("hidden", ports.length === 0);
+  refs.controls.classList.toggle("hidden", ports.length === 0);
   refs.searchClear.classList.toggle("hidden", refs.search.value.length === 0);
 
   if (statusMessage) {
@@ -133,7 +195,12 @@ function emptyState(): HTMLElement {
     text.textContent = scanning ? "Scanning…" : "No listening ports found";
   } else {
     glyph.textContent = "⌕";
-    text.textContent = `No ports match “${refs.search.value}”`;
+    const q = refs.search.value.trim();
+    if (q) {
+      text.textContent = `No ports match “${q}”`;
+    } else {
+      text.textContent = "No ports match this filter";
+    }
   }
   wrap.append(glyph, text);
   return wrap;
@@ -178,7 +245,7 @@ function rowFor(p: PortProcess): HTMLElement {
   meta.className = "row-meta";
   meta.textContent = `PID ${p.pid} • ${p.user}`;
 
-  main.append(top, name, meta);
+  main.append(top, name, meta, metricsFor(p));
 
   let control: HTMLElement;
   if (p.isKillable) {
@@ -197,6 +264,71 @@ function rowFor(p: PortProcess): HTMLElement {
 
   row.append(main, control);
   return row;
+}
+
+/** Compact CPU + memory bars stacked under the row's metadata. */
+function metricsFor(p: PortProcess): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "row-metrics";
+
+  // CPU: normalized to a single core (100%); the bar clamps but the text shows
+  // the true value. The first sample has no real delta yet, so show a dash.
+  const cpuKnown = scanCount >= 2;
+  const cpuText = cpuKnown ? `${formatPercent(p.cpuPercent)}%` : "—";
+  const cpuFill = cpuKnown ? clamp(p.cpuPercent, 0, 100) : 0;
+  wrap.appendChild(metricBar("CPU", cpuText, cpuFill, "cpu"));
+
+  // Memory: normalized to total RAM, with an always-visible sliver so small
+  // dev servers stay distinguishable. Text shows the absolute value.
+  const ratio = totalMemory > 0 ? (p.memoryBytes / totalMemory) * 100 : 0;
+  const memFill = p.memoryBytes > 0 ? Math.max(clamp(ratio, 0, 100), 2) : 0;
+  wrap.appendChild(metricBar("Mem", formatBytes(p.memoryBytes), memFill, "mem"));
+
+  return wrap;
+}
+
+function metricBar(
+  label: string,
+  value: string,
+  fillPercent: number,
+  kind: "cpu" | "mem",
+): HTMLElement {
+  const row = document.createElement("div");
+  row.className = `metric metric-${kind}`;
+  row.title = `${label}: ${value}`;
+
+  const tag = document.createElement("span");
+  tag.className = "metric-label";
+  tag.textContent = label;
+
+  const track = document.createElement("div");
+  track.className = "metric-track";
+  const fill = document.createElement("div");
+  fill.className = "metric-fill";
+  fill.style.width = `${fillPercent}%`;
+  track.appendChild(fill);
+
+  const val = document.createElement("span");
+  val.className = "metric-val";
+  val.textContent = value;
+
+  row.append(tag, track, val);
+  return row;
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.min(Math.max(n, lo), hi);
+}
+
+function formatPercent(pct: number): string {
+  return pct >= 10 ? pct.toFixed(0) : pct.toFixed(1);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  if (mb < 1024) return `${mb < 10 ? mb.toFixed(1) : mb.toFixed(0)} MB`;
+  return `${(mb / 1024).toFixed(1)} GB`;
 }
 
 function promptKill(p: PortProcess): void {
@@ -278,6 +410,27 @@ async function initAutostart(): Promise<void> {
   }
 }
 
+/// Fetch total physical RAM once so the memory bars can be normalized. Failure
+/// is non-fatal: bars simply render empty until a value is known.
+async function initSystemInfo(): Promise<void> {
+  try {
+    const info = await invoke<SystemInfo>("system_info");
+    totalMemory = info.totalMemory;
+  } catch {
+    totalMemory = 0;
+  }
+}
+
+function selectCategory(next: Category): void {
+  category = next;
+  for (const chip of document.querySelectorAll<HTMLButtonElement>(".chip")) {
+    const active = chip.dataset.category === next;
+    chip.classList.toggle("active", active);
+    chip.setAttribute("aria-pressed", String(active));
+  }
+  render();
+}
+
 async function toggleAutostart(): Promise<void> {
   const want = refs.autostart.checked;
   try {
@@ -324,6 +477,21 @@ function wire(): void {
     refs.search.value = "";
     render();
   });
+  for (const chip of document.querySelectorAll<HTMLButtonElement>(".chip")) {
+    chip.addEventListener("click", () => {
+      selectCategory((chip.dataset.category as Category) ?? "all");
+    });
+  }
+  refs.sortKey.addEventListener("change", () => {
+    sortKey = refs.sortKey.value as SortKey;
+    render();
+  });
+  refs.sortDir.addEventListener("click", () => {
+    sortDir = sortDir === "asc" ? "desc" : "asc";
+    refs.sortDir.textContent = sortDir === "asc" ? "\u2191" : "\u2193";
+    refs.sortDir.classList.toggle("desc", sortDir === "desc");
+    render();
+  });
   refs.autostart.addEventListener("change", () => void toggleAutostart());
   refs.quit.addEventListener("click", () => void invoke("quit_app"));
   window.addEventListener("keydown", (e) => {
@@ -342,4 +510,5 @@ function wire(): void {
 
 wire();
 void initAutostart();
+void initSystemInfo();
 startAutoRefresh();

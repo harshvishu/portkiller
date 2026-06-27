@@ -30,19 +30,27 @@ pub struct PortProcess {
     pub is_killable: bool,
     pub protected_reason: Option<String>,
     pub bind_scope: BindScope,
+    /// Current CPU utilization, normalized to a single core (100% = one core).
+    pub cpu_percent: f32,
+    /// Resident memory of the owning process, in bytes.
+    pub memory_bytes: u64,
 }
 
 /// Enumerate every TCP socket in the LISTEN state, grouped by (pid, port),
-/// sorted ascending by port. Uses native OS socket APIs via `netstat2` and
-/// resolves process metadata via `sysinfo` — no shelling out.
-pub fn list_ports() -> Vec<PortProcess> {
+/// returned in a stable default order (ascending by port). Uses native OS
+/// socket APIs via `netstat2` and resolves process metadata via `sysinfo` — no
+/// shelling out.
+///
+/// Takes a caller-owned `System` so CPU utilization can be computed as a delta
+/// across successive refreshes of the *same* sampler. A fresh `System` would
+/// always report 0% CPU.
+pub fn list_ports(sys: &mut System) -> Vec<PortProcess> {
     let af = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
     let sockets = match get_sockets_info(af, ProtocolFlags::TCP) {
         Ok(s) => s,
         Err(_) => return Vec::new(),
     };
 
-    let mut sys = System::new();
     sys.refresh_processes(ProcessesToUpdate::All, true);
     let users = Users::new_with_refreshed_list();
     let current = current_username();
@@ -74,7 +82,8 @@ pub fn list_ports() -> Vec<PortProcess> {
                 }
             }
             None => {
-                let (command, user, display_name, resolved) = resolve(&sys, &users, pid);
+                let (command, user, display_name, resolved, cpu_percent, memory_bytes) =
+                    resolve(sys, &users, pid);
                 let (is_killable, protected_reason) = if resolved {
                     killability(&user, &current, &command)
                 } else {
@@ -103,6 +112,8 @@ pub fn list_ports() -> Vec<PortProcess> {
                         } else {
                             BindScope::Localhost
                         },
+                        cpu_percent,
+                        memory_bytes,
                     },
                 );
             }
@@ -141,13 +152,18 @@ pub fn ensure_killable(pid: u32) -> Result<(), String> {
     }
 }
 
-fn resolve(sys: &System, users: &Users, pid: u32) -> (String, String, String, bool) {
+#[allow(clippy::type_complexity)]
+fn resolve(
+    sys: &System,
+    users: &Users,
+    pid: u32,
+) -> (String, String, String, bool, f32, u64) {
     if pid != 0 {
         if let Some(p) = sys.process(Pid::from_u32(pid)) {
             let command = p.name().to_string_lossy().to_string();
             let user = resolve_user(users, p);
             let display_name = command.strip_suffix(".exe").unwrap_or(&command).to_string();
-            return (command, user, display_name, true);
+            return (command, user, display_name, true, p.cpu_usage(), p.memory());
         }
     }
     (
@@ -155,6 +171,8 @@ fn resolve(sys: &System, users: &Users, pid: u32) -> (String, String, String, bo
         "unknown".to_string(),
         "Unknown process".to_string(),
         false,
+        0.0,
+        0,
     )
 }
 
@@ -281,12 +299,43 @@ mod tests {
         assert!(!IpAddr::V4(Ipv4Addr::LOCALHOST).is_unspecified());
     }
 
+    fn refreshed_system() -> System {
+        let mut sys = System::new();
+        sys.refresh_processes(ProcessesToUpdate::All, true);
+        sys
+    }
+
     #[test]
     fn list_ports_returns_port_sorted_without_panicking() {
-        let ports = list_ports();
+        let mut sys = refreshed_system();
+        let ports = list_ports(&mut sys);
         let mut expected: Vec<u16> = ports.iter().map(|p| p.port).collect();
         expected.sort_unstable();
         let actual: Vec<u16> = ports.iter().map(|p| p.port).collect();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn list_ports_reports_non_negative_metrics() {
+        let mut sys = refreshed_system();
+        for p in list_ports(&mut sys) {
+            assert!(p.cpu_percent >= 0.0, "cpu_percent must be non-negative");
+            // memory_bytes is u64, so it is inherently non-negative; the field
+            // simply being present and readable is the assertion here.
+            let _ = p.memory_bytes;
+        }
+    }
+
+    #[test]
+    fn known_pid_yields_a_memory_value() {
+        let sys = refreshed_system();
+        let pid = std::process::id();
+        let process = sys
+            .process(Pid::from_u32(pid))
+            .expect("current process should be visible to sysinfo");
+        assert!(
+            process.memory() > 0,
+            "a running process should report non-zero resident memory"
+        );
     }
 }
