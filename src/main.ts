@@ -59,6 +59,8 @@ let scanCount = 0;
 let sortKey: SortKey = "port";
 let sortDir: SortDir = "asc";
 let category: Category = "all";
+// Whether the collapsible filter panel (chips + sort) is expanded.
+let filtersOpen = false;
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -73,6 +75,7 @@ const refs = {
   searchBar: el("search-bar"),
   search: el<HTMLInputElement>("search"),
   searchClear: el<HTMLButtonElement>("search-clear"),
+  filterToggle: el<HTMLButtonElement>("filter-toggle"),
   controls: el("controls"),
   sortKey: el<HTMLSelectElement>("sort-key"),
   sortDir: el<HTMLButtonElement>("sort-dir"),
@@ -153,7 +156,10 @@ function render(): void {
   const visible = visibleRows();
   refs.count.textContent = String(visible.length);
   refs.searchBar.classList.toggle("hidden", ports.length === 0);
-  refs.controls.classList.toggle("hidden", ports.length === 0);
+  const showControls = ports.length > 0 && filtersOpen;
+  refs.controls.classList.toggle("open", showControls);
+  refs.filterToggle.classList.toggle("active", showControls);
+  refs.filterToggle.setAttribute("aria-expanded", String(showControls));
   refs.searchClear.classList.toggle("hidden", refs.search.value.length === 0);
 
   if (statusMessage) {
@@ -475,6 +481,10 @@ function wire(): void {
   refs.search.addEventListener("input", () => render());
   refs.searchClear.addEventListener("click", () => {
     refs.search.value = "";
+    render();
+  });
+  refs.filterToggle.addEventListener("click", () => {
+    filtersOpen = !filtersOpen;
     render();
   });
   for (const chip of document.querySelectorAll<HTMLButtonElement>(".chip")) {

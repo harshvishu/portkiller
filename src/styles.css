@@ -204,13 +204,56 @@ body {
   font-size: 14px;
 }
 
-/* Controls: category chips + sort selector */
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--label-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 5px;
+  line-height: 0;
+}
+
+.filter-toggle:hover {
+  background: var(--fill-control);
+  color: var(--label-primary);
+}
+
+.filter-toggle.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* Controls: category chips + sort selector, collapsible via the filter toggle */
 .controls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
+  flex-shrink: 0;
   gap: 8px;
-  margin: 0 12px 8px;
+  margin: 0 12px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 240ms ease,
+    opacity 160ms ease,
+    margin-bottom 240ms ease;
+}
+
+.controls.open {
+  max-height: 140px;
+  opacity: 1;
+  margin-bottom: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controls {
+    transition: none;
+  }
 }
 
 .chips {
@@ -244,13 +287,14 @@ body {
 .sort {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .sort-label {
   font-size: 11px;
   color: var(--label-tertiary);
+  margin-right: auto;
 }
 
 .sort-select {

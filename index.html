@@ -23,9 +23,14 @@
         <span class="search-icon" aria-hidden="true">⌕</span>
         <input id="search" type="text" placeholder="Filter by port, PID, app, or owner" autocomplete="off" spellcheck="false" />
         <button id="search-clear" class="search-clear hidden" title="Clear filter" aria-label="Clear filter">⨯</button>
+        <button id="filter-toggle" class="filter-toggle" title="Filter options" aria-label="Toggle filter options" aria-expanded="false">
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+            <path d="M2 3.5h12l-4.6 5.4v3.4l-2.8 1.4V8.9z" fill="currentColor" />
+          </svg>
+        </button>
       </div>
 
-      <div id="controls" class="controls hidden">
+      <div id="controls" class="controls">
         <div class="chips" role="group" aria-label="Filter by category">
           <button class="chip active" data-category="all" aria-pressed="true">All</button>
           <button class="chip" data-category="killable" aria-pressed="false">Killable</button>
