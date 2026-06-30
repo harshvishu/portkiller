@@ -175,9 +175,13 @@ function render(): void {
     return;
   }
   for (const p of visible) {
-    refs.content.appendChild(rowFor(p));
     if (pendingKill && pendingKill.id === p.id) {
-      refs.content.appendChild(confirmRowFor(p));
+      const group = document.createElement("div");
+      group.className = "confirm-group";
+      group.append(rowFor(p), confirmRowFor(p));
+      refs.content.appendChild(group);
+    } else {
+      refs.content.appendChild(rowFor(p));
     }
   }
 
@@ -349,9 +353,15 @@ function cancelKill(): void {
   const row = refs.content.querySelector<HTMLElement>(".confirm-row.open");
   if (row) {
     row.classList.remove("open");
-    row.addEventListener("transitionend", () => row.remove(), { once: true });
+    let didRender = false;
+    const finish = () => {
+      if (didRender) return;
+      didRender = true;
+      render();
+    };
+    row.addEventListener("transitionend", finish, { once: true });
+    window.setTimeout(finish, 240);
   }
-  refs.content.querySelector(".row.armed")?.classList.remove("armed");
 }
 
 function confirmRowFor(p: PortProcess): HTMLElement {
