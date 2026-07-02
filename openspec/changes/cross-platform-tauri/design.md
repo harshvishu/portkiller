@@ -80,14 +80,14 @@ No shell plugin. The only privileged operations are our own `kill_port`/`list_po
 ## Migration Plan
 
 1. **Spike (de-risk):** small Rust binary using `netstat2` + `sysinfo` on macOS *and* Windows to confirm listener enumeration and PID association for owned and non-owned processes (resolves Q3).
-2. **Scaffold** the Tauri 2.0 project (`src-tauri/` + web `src/`) alongside the existing Swift tree; do not delete Swift yet.
+2. **Scaffold** the Tauri 2.0 project (`src-tauri/` + web `src/`) alongside the existing Swift tree during the transition.
 3. **Port discovery** (`list_ports`) to parity, then **termination** (`kill_port`).
 4. **Tray + popover** shell, background/no-dock config, single-instance.
 5. **Autostart** toggle via plugin.
 6. **Packaging + signing** per OS through the Tauri bundler; wire CI.
-7. **Cutover:** once macOS parity is verified, remove `Sources/PortKiller/**`, `Package.swift`, and `build_app.sh`; update README.
+7. **Cutover (completed 2026-07-02):** macOS parity accepted; removed `Sources/PortKiller/**`, `Package.swift`, and `build_app.sh`; updated README.
 
-**Rollback:** the Swift app stays buildable (`./build_app.sh`) until the cutover commit, so reverting is trivial if parity slips.
+**Rollback:** the Swift rollback path was intentionally removed after Tauri acceptance. Future rollback should revert the cutover commit or ship a previous Tauri artifact.
 
 ## Open Questions
 

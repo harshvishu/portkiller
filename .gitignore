@@ -1,8 +1,4 @@
-# Swift Package Manager
-.build/
-.swiftpm/
-
-# App bundle build output / frontend build output
+# Frontend build output
 dist/
 
 # Node / frontend
@@ -11,12 +7,6 @@ node_modules/
 # Tauri / Rust
 src-tauri/target/
 src-tauri/gen/
-
-# Xcode
-*.xcodeproj
-xcuserdata/
-*.xcuserstate
-DerivedData/
 
 # macOS
 .DS_Store

@@ -10,22 +10,22 @@ dev server (`3000`, `8080`, …). Cross-platform, built with
 ## Features
 
 - **Lives in the menu bar** — no Dock icon, always one click away.
-- **Custom power-symbol icon**, drawn in code as a template image so it adapts
-  to light/dark menus automatically.
+- **Custom power-symbol tray icon**, bundled as a template asset so it adapts
+  to light/dark menus automatically on macOS.
 - **Live list of listening ports**, sorted by port number, auto-refreshing
   every few seconds while open.
 - **Search / filter box** — instantly narrow the list by port number, app name,
   command, or owner.
-- **Friendly names** — shows the app name when available, otherwise the process
-  command (e.g. `node`, `Python`, `Code Helper`).
+- **Friendly process labels** — shows the executable/process name behind each
+  listener (e.g. `node`, `python`, `Code Helper`).
 - **Trailing Kill button** on every row.
 - **Confirmation alert** before anything is terminated.
 - **Protected processes are greyed out** with a lock badge and a "Protected"
   label — covers both macOS system services (e.g. `rapportd`, `mDNSResponder`)
   and any process not owned by you (which you can't stop without elevated
   privileges).
-- **Graceful kill** — sends `SIGTERM`, then escalates to `SIGKILL` only if the
-  process refuses to exit, so the port is reliably freed.
+- **Safe termination path** — Unix builds send `SIGTERM`, then escalate to
+  `SIGKILL` only if the process refuses to exit; Windows uses a forceful stop.
 - **Bind-scope hint** — shows whether a port is `localhost`-only or exposed on
   `all interfaces`.
 - **Launch at login** — a one-click, cross-platform toggle to start Port Killer
@@ -96,36 +96,38 @@ winget that depend on it) are a planned follow-up.
 
 | Concern            | Implementation                                                              |
 | ------------------ | --------------------------------------------------------------------------- |
-| Discover ports     | `lsof -iTCP -sTCP:LISTEN -P -n -FpcuLn` parsed in `PortScanner`             |
-| Friendly app names | `NSWorkspace.runningApplications` matched by PID                            |
-| Filtering          | Case-insensitive match on port / name / command / owner in `filteredPorts` |
-| Protection rule    | Not owned by you **or** in a system-service deny-list ⇒ greyed out          |
-| Kill               | `SIGTERM`, then `SIGKILL` after 0.5 s if still alive                        |
-| Menu bar UI        | SwiftUI `MenuBarExtra` with `.menuBarExtraStyle(.window)`                   |
-| Menu bar icon      | Template `NSImage` drawn with `NSBezierPath` in `MenuBarIcon`               |
-| Launch at login    | `SMAppService.mainApp` register/unregister in `LoginItemManager`           |
+| Discover ports     | Rust `netstat2` socket enumeration filtered to TCP `LISTEN`                 |
+| Process metadata   | `sysinfo` resolves PID, command, owner, CPU, and memory                     |
+| Filtering / sort   | Vanilla TypeScript UI filters by port, PID, name, command, owner, category  |
+| Protection rule    | Backend checks ownership and per-OS system-service deny-lists               |
+| Kill               | Unix `SIGTERM` then `SIGKILL`; Windows forceful process termination         |
+| Tray / popover     | Tauri tray icon plus a borderless, always-on-top popover window             |
+| Tray icon          | Bundled `src-tauri/icons/tray.png`, marked as a template image on macOS     |
+| Launch at login    | `tauri-plugin-autostart`                                                    |
+| Permissions        | Tauri v2 capabilities grant only core window APIs and autostart operations  |
 
 ## Project layout
 
 ```
-Sources/PortKiller/
-  PortKillerApp.swift        # @main MenuBarExtra scene
-  AppDelegate.swift          # accessory (menu-bar-only) activation policy
-  MenuBarIcon.swift          # custom template image for the menu bar
-  Models/PortProcess.swift   # one listener + ownership/scope info
-  Services/PortScanner.swift # lsof invocation + parsing + protection rules
-  Services/LoginItemManager.swift    # launch-at-login via SMAppService
-  ViewModels/PortScannerModel.swift  # observable state, refresh timer, kill, filter
-  Views/PortListView.swift   # popover: header, search, list, footer, confirm alert
-  Views/PortRowView.swift    # single row + Kill / Protected control
-build_app.sh                 # builds the .app bundle (ad-hoc signed)
+src/
+  main.ts                    # popover UI, filtering, sorting, IPC calls
+  styles.css                 # popover styling and native material fallback
+src-tauri/
+  src/lib.rs                 # Tauri builder, commands, tray, popover behavior
+  src/ports.rs               # TCP listener discovery, metadata, protection rules
+  src/kill.rs                # process termination per OS
+  src/main.rs                # thin desktop entry point
+  capabilities/default.json  # locked-down Tauri permissions
+  icons/                     # app and tray icon assets
+  tauri.conf.json            # app, window, bundler, and security config
+scripts/set-version.mjs      # release pipeline version stamping
 ```
 
 ## Notes & safety
 
-- The deny-list in `PortScanner.protectedProcessNames` is conservative; add
-  names there if you want extra processes protected.
-- The app is **ad-hoc signed**. On first launch macOS Gatekeeper may require
-  right-click → **Open**.
+- The deny-lists in `src-tauri/src/ports.rs` are conservative; add names there
+  if you want extra processes protected.
+- Local builds are unsigned/ad-hoc signed. On first launch macOS Gatekeeper may
+  require right-click → **Open**.
 - It only touches processes **you own** — it cannot kill root/system processes,
-  which is why those are shown greyed out rather than offered for termination.
+  and the backend revalidates that rule before every termination attempt.

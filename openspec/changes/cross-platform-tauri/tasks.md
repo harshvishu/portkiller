@@ -75,8 +75,8 @@
 
 ## 9. Parity verification & cutover
 
-- [ ] 9.1 Verify macOS feature parity against the original app (list, search, bind scope, protected rows, graceful kill, autostart) — backend/tests/build verified; release bundle smoke-launched (clean start, single-instance plugin confirmed by a second launch exiting immediately while one was running); interactive GUI parity (tray click, popover list/search/kill, autostart toggle) still pending on-device check
+- [x] 9.1 Verify macOS feature parity against the original app (list, search, bind scope, protected rows, graceful kill, autostart) — backend/tests/build verified; release bundle smoke-launched (clean start, single-instance plugin confirmed by a second launch exiting immediately while one was running); interactive GUI parity accepted by user on 2026-07-02
 - [ ] 9.2 Verify Windows behavior (enumeration, force kill messaging, autostart, tray, no taskbar entry) — DEFERRED: requires a Windows host
 - [ ] 9.3 Verify Linux behavior (enumeration, kill, autostart, tray or fallback window) — DEFERRED with Linux scope (Q2)
-- [ ] 9.4 Remove the Swift implementation: `Sources/PortKiller/**`, `Package.swift`, `build_app.sh` — DEFERRED: cutover only after interactive macOS GUI sign-off (Swift retained as rollback)
+- [x] 9.4 Remove the Swift implementation: `Sources/PortKiller/**`, `Package.swift`, `build_app.sh` — cutover completed after macOS GUI sign-off; Swift rollback path removed
 - [x] 9.5 Update `README.md` for the cross-platform Tauri app (build, run, install per OS; document Windows force-kill and Linux tray caveats)
